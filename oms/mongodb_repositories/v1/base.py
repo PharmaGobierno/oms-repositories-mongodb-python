@@ -1,4 +1,4 @@
-from typing import Any, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 
 from infra.mongodb import MongoDbManager
 from pymongo import ASCENDING, DESCENDING
@@ -32,7 +32,7 @@ class BaseMongoDbRepository:
     def update_many(
         self, and_conditions: Optional[List[Tuple[str, str, Any]]], *, data: dict
     ) -> int:
-        parsed_filter: dict = {}
+        parsed_filter: Dict[str, Any] = {}
         if and_conditions:
             parsed_filter = convert_conditions_to_mongo(and_conditions)
         update = {"$set": data}
@@ -72,7 +72,7 @@ class BaseMongoDbRepository:
         Returns:
             Optional[dict]: An dict representation of the found document
         """
-        filter = {"_id": document_id}
+        filter: Dict[str, Any] = {"_id": document_id}
         if tenant:
             filter.update({"tenant_id": {"$in": tenant}})
         document_data = self._collection.find_one(
@@ -90,7 +90,7 @@ class BaseMongoDbRepository:
         sort: Optional[List[Tuple[str, int]]] = None,
         projection: Optional[List[str]] = None,
     ) -> Tuple[int, Iterator[dict]]:
-        parsed_filter: dict = {}
+        parsed_filter: Dict[str, Any] = {}
         if and_conditions:
             parsed_filter = convert_conditions_to_mongo(and_conditions)
         if tenant:
