@@ -1,5 +1,53 @@
+from typing import Any, Dict, List, Optional, Tuple
+
 from .base import BaseMongoDbRepository
 
 
 class RemissionsRepository(BaseMongoDbRepository):
-    pass
+    def search_by_tracking(
+        self,
+        search_str: str,
+        *,
+        page: int,
+        limit: int,
+        created_at_gt: Optional[int] = None,
+        created_at_lt: Optional[int] = None,
+        tenants: Optional[List[str]] = None,
+        events: Optional[List[str]] = None,
+    ) -> Tuple[int, List[dict]]:
+        SEARCH_INDEX = "autocomplete_order_number_range_created_at"
+        search: dict = {
+            "index": SEARCH_INDEX,
+            "compound": {
+                "must": [{"autocomplete": {"query": search_str, "path": "tracking_id"}}]
+            },
+            "sort": {"created_at": BaseMongoDbRepository.DESCENDING_ORDER},
+        }
+        if created_at_gt is not None or created_at_lt is not None:
+            created_at_range: Dict[str, Any] = {"path": "created_at"}
+            if created_at_gt is not None:
+                created_at_range["gt"] = created_at_gt
+            if created_at_lt is not None:
+                created_at_range["lt"] = created_at_lt
+        search["compound"]["filter"] = []
+        if tenants:
+            search["compound"]["filter"].append(
+                {"in": {"path": "tenant_id", "value": tenants}}
+            )
+        if events:
+            search["compound"]["filter"].append(
+                {"in": {"path": "current_event", "value": events}}
+            )
+        pipeline: List[dict] = [
+            {"$search": search},
+            {
+                "$facet": {
+                    "results": [{"$skip": limit * (page - 1)}, {"$limit": limit}],
+                    "totalCount": [{"$count": "count"}],
+                }
+            },
+            {"$addFields": {"count": {"$arrayElemAt": ["$totalCount.count", 0]}}},
+        ]
+        aggregation_cursor = self._collection.aggregate(pipeline=pipeline)
+        data: dict = aggregation_cursor.next()
+        return data.get("count", 0), data.get("results", [])
