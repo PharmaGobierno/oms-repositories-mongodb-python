@@ -15,7 +15,7 @@ class RemissionsRepository(BaseMongoDbRepository):
         tenants: Optional[List[str]] = None,
         events: Optional[List[str]] = None,
     ) -> Tuple[int, List[dict]]:
-        SEARCH_INDEX = "autocomplete_order_number_range_created_at"
+        SEARCH_INDEX = "autocomplete_tracking_id_in_events_range_created_at"
         search: dict = {
             "index": SEARCH_INDEX,
             "compound": {
